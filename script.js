@@ -1,7 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // 로컬스토리지 저장키
-  const STORAGE_KEY = 'playersData';
-
   // DOM 요소
   const goToInputBtn = document.getElementById('goToInputBtn');
   const hitterMenu = document.getElementById('hitterMenu');
@@ -9,16 +6,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const rankingContent = document.getElementById('rankingContent');
   const searchInput = document.getElementById('searchInput');
 
-  // 주요 랭킹 스탯
   const hitterStatsForRanking = ['타율', '홈런', '출루율', 'OPS', '타점'];
   const pitcherStatsForRanking = ['승리', '세이브', '홀드', '삼진', 'ERA', 'WHIP'];
 
   let currentSort = { column: null, asc: true };
+  let players = [];  // 선수 데이터 저장 변수
 
-  // 로컬스토리지에서 선수 데이터 불러오기
-  function loadPlayers() {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+  // GitHub 저장소에서 선수 데이터 JSON fetch 함수
+  async function loadPlayersFromGitHub() {
+    const url = 'https://raw.githubusercontent.com/사용자명/저장소명/main/players.json'; // 본인 저장소 URL로 변경
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('선수 데이터를 불러오는데 실패했습니다.');
+      const data = await res.json();
+      return data;
+    } catch (e) {
+      console.error(e);
+      alert('선수 데이터 로드 실패: ' + e.message);
+      return [];
+    }
   }
 
   // 타율 계산
@@ -83,14 +89,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return (H + BB) / IP;
   }
 
-  // 선수 이름으로 필터링
+  // 선수 이름 필터링
   function filterByName(players, keyword) {
     if (!keyword) return players;
     const lower = keyword.toLowerCase();
     return players.filter(p => p.name.toLowerCase().includes(lower));
   }
 
-  // stat별 실제 값 얻는 함수 (계산된 스탯 포함)
+  // stat별 값 가져오기
   function getStatValue(player, stat) {
     switch(stat) {
       case '타율': return calculateAVG(player);
@@ -108,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // 선수 배열 정렬 함수 (오름차순/내림차순)
+  // 선수 정렬
   function sortPlayers(players, stat, asc = true) {
     return players.slice().sort((a, b) => {
       const valA = getStatValue(a, stat);
@@ -119,9 +125,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // stat별 선수 데이터 필터링 (타자 or 투수)
+  // stat별 타자 또는 투수 필터링
   function getRankingData(stat) {
-    const players = loadPlayers();
     if (hitterStatsForRanking.includes(stat)) {
       return players.filter(p => p.type === '타자');
     }
@@ -131,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return [];
   }
 
-  // 순위표에 표시할 값 (소수점 자리 맞춤 포함)
+  // stat별 표시값 (소수점 자리수 조정 등)
   function getStatDisplay(player, stat) {
     const val = getStatValue(player, stat);
     if (['타율', '출루율', 'OPS'].includes(stat)) return val.toFixed(3);
@@ -141,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return val;
   }
 
-  // 테이블 생성 함수 (선수 이름 클릭 시 상세 정보 페이지 이동)
+  // 테이블 생성 (선수명 클릭 시 상세페이지 이동)
   function createRankingTable(players, stat) {
     const table = document.createElement('table');
     const thead = document.createElement('thead');
@@ -181,7 +186,6 @@ document.addEventListener('DOMContentLoaded', () => {
       nameTd.style.color = '#1a73e8';
       nameTd.style.cursor = 'pointer';
       nameTd.style.textDecoration = 'underline';
-      // 타입도 함께 넘기도록 수정
       nameTd.addEventListener('click', () => {
         window.location.href = `player_detail.html?name=${encodeURIComponent(player.name)}&type=${encodeURIComponent(player.type)}`;
       });
@@ -199,30 +203,28 @@ document.addEventListener('DOMContentLoaded', () => {
     return table;
   }
 
-  // 순위 렌더링 함수
+  // 순위 렌더링
   function renderRanking(stat, asc = true) {
     currentSort.column = stat;
     currentSort.asc = asc;
 
     rankingContent.innerHTML = '';
-    let players = getRankingData(stat);
+    let filteredPlayers = getRankingData(stat);
 
-    // 검색어 필터 적용
     const keyword = searchInput.value.trim();
-    players = filterByName(players, keyword);
+    filteredPlayers = filterByName(filteredPlayers, keyword);
 
-    // 정렬 적용
-    players = sortPlayers(players, stat, asc);
+    filteredPlayers = sortPlayers(filteredPlayers, stat, asc);
 
-    if (players.length === 0) {
+    if (filteredPlayers.length === 0) {
       rankingContent.innerHTML = '<p class="no-data">선수 기록이 없습니다.</p>';
       return;
     }
 
-    rankingContent.appendChild(createRankingTable(players, stat));
+    rankingContent.appendChild(createRankingTable(filteredPlayers, stat));
   }
 
-  // 기록 입력 페이지 이동 전 암호 입력 처리
+  // 기록 입력 페이지 이동 암호 처리
   goToInputBtn.addEventListener('click', () => {
     const password = prompt('기록 입력 페이지 접근을 위한 암호를 입력하세요.');
     if (password === '123456!') {
@@ -232,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 메뉴 클릭 이벤트 처리
+  // 메뉴 활성화 관리
   function clearActiveMenu() {
     [...hitterMenu.children].forEach(li => li.classList.remove('active'));
     [...pitcherMenu.children].forEach(li => li.classList.remove('active'));
@@ -260,10 +262,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 검색 입력 이벤트
   searchInput.addEventListener('input', () => {
     if (!currentSort.column) return;
     renderRanking(currentSort.column, currentSort.asc);
   });
 
+  // 페이지 최초 로드 시 GitHub에서 선수 데이터 불러오기
+  loadPlayersFromGitHub().then(data => {
+    players = data;
+    currentSort.column = '타율';
+    currentSort.asc = true;
+    renderRanking(currentSort.column, currentSort.asc);
+  });
+
+  // GitHub에서 선수 데이터 fetch 함수 (꼭 URL 본인 저장소 경로로 수정)
+  async function loadPlayersFromGitHub() {
+    const url = 'https://raw.githubusercontent.com/사용자명/저장소명/main/players.json'; // 본인 URL로 변경
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('선수 데이터를 불러오는데 실패했습니다.');
+      const data = await res.json();
+      return data;
+    } catch (e) {
+      console.error(e);
+      alert('선수 데이터 로드 실패: ' + e.message);
+      return [];
+    }
+  }
 });
