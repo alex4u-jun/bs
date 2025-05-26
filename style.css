@@ -1,0 +1,52 @@
+    body {
+    max-width: 900px;
+    margin: auto;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    overflow-x: auto; /* 화면이 좁을 때 가로 스크롤 추가 */
+    }
+
+    nav {
+    margin-bottom: 15px;
+    }
+
+    nav a {
+    text-decoration: none;
+    color: #007bff;
+    font-weight: bold;
+    }
+
+    nav a:hover {
+    text-decoration: underline;
+    }
+
+    h1 {
+    margin-bottom: 10px;
+    }
+
+    h2 {
+    margin-top: 40px;
+    }
+
+    h3 {
+    margin-bottom: 8px;
+    }
+
+    /* 표를 감싸는 컨테이너에 가로 스크롤 허용 */
+    .table-wrapper {
+    overflow-x: auto;
+    width: 100%;
+    }
+
+    table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 10px;
+    min-width: 700px; /* 표가 너무 작아지지 않도록 최소 너비 지정 */
+    }
+
+    th, td {
+    border: 1px solid #ccc;
+    padding: 6px;
+    text-align: center;
+    }
